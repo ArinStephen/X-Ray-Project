@@ -1,20 +1,22 @@
 import matplotlib.pyplot as plt
-import numpy as np
 import math
 from Tkinter import *
 import Tkinter as ttk
 from ttk import *
 
+class Muscle:
+    def __init__(self, muscle_absportion):
+        self.muscle_absportion = muscle_absportion
+
+class Bone:
+    def __init__(self, bone_absportion, is_broken):
+        self.bone_absportion = bone_absportion
+        self.is_broken = is_broken
 def xRaySim():
     #Creates the matrix where our phantom is
     phantom = [[0 for row in range(255)] for col in range(255)]
-    broken_leg = [[0 for row in range(255)] for col in range(255)]
     #matrices for our layers
-    muscle_matrix = [[0 for row in range(255)] for col in range(255)]
-    bone_matrix = [[0 for row in range(255)] for col in range(255)]
-    bbone_matrix = [[0 for row in range(255)] for col in range(255)]
-    absorption_matrix = [[0 for row in range(255)] for col in range(255)]
-    broken_matrix = [[0 for row in range(255)] for col in range(255)]
+    patient_matrix = [[0 for row in range(255)] for col in range(255)]
     #matrices that stores the I values that the beam sees
     storage = [[-1 for row in range(255)] for col in range(255)]
 
@@ -32,11 +34,11 @@ def xRaySim():
 
     pixel_energy = 0
     if initial_energy == 1.0:
-        muscle_absorption = .050
-        bone_absorption = 1.2
+        patient_muscle = Muscle(.050)
+        patient_bone = Bone(1.2, False)
     else:
-        muscle_absorption = .020
-        bone_absorption = 1.0
+        patient_muscle = Muscle(.020)
+        patient_bone = Bone(1.0, False)
 
     outer_left_boundary = 50
 
@@ -50,42 +52,38 @@ def xRaySim():
     #This loop first places 0 to everything in the phantom matrix
     for i in range(255):
         for j in range(255):
-            absorption_matrix[i][j] = 0
-            broken_matrix[i][j] = 0
+            patient_matrix[i][j] = 0
     #This loop places the first layer from 50 to 240 both horizontally and vertically
     for i in range(outer_left_boundary, outer_right_boundary):
         for j in range(outer_left_boundary, outer_right_boundary):
-                absorption_matrix[i][j] = muscle_absorption
-                muscle_matrix[i][j] = 1
+                patient_matrix[i][j] = patient_muscle.muscle_absportion
     #This loop places the bone layer from 100 to 180 both horizonally and vertically
-    for i in range(100, 180):
-        for j in range(100, inner_right_boundary):
+    for i in range(inner_left_boundary, 180):
+        for j in range(inner_left_boundary, inner_right_boundary):
             if(fracture_width > 0 and j >= (140) and j <= 140 + fracture_width):
-                absorption_matrix[i][j]= 0
-                broken_leg[i][j] = 1
+                patient_matrix[i][j] = 0
             else:
-                absorption_matrix[i][j] = bone_absorption
-                bone_matrix[i][j] = 1
+                patient_matrix[i][j] = patient_bone.bone_absportion
     #This is for the line graph. Basically stores the I value. If it hits bone, it does not continue to the other muscle layer, it just uses that I value.
     for i in range(255):
         i_values.append(final_energy)
         final_energy = initial_energy
         for j in range(255):
-            if(absorption_matrix[i][j] != 0):
-                if(bone_matrix[i][j] == 1):
-                    final_energy = initial_energy * math.exp(-1 * (absorption_matrix[j][i]) * 1)
+            if(patient_matrix[i][j] != 0):
+                if(patient_matrix[i][j] == patient_bone):
+                    final_energy = initial_energy * math.exp(-1 * (patient_matrix[j][i]) * 1)
                     break
                 else:
-                    pixel_energy = initial_energy * math.exp(-1 * (absorption_matrix[j][i]) * 1)
-                    phantom[i][j] = initial_energy * math.exp(-1 * (absorption_matrix[j][i]) * 1)
+                    pixel_energy = initial_energy * math.exp(-1 * (patient_matrix[j][i]) * 1)
+                    phantom[i][j] = initial_energy * math.exp(-1 * (patient_matrix[j][i]) * 1)
                     final_energy = pixel_energy
             else:
                 continue
     #This loop creates the phantom image based on the I values of every pixel
     for i in range(255):
         for j in range(255):
-            if(absorption_matrix[i][j] != 0):
-                phantom[i][j] = initial_energy * math.exp(-1 * (absorption_matrix[i][j]) * 1)
+            if(patient_matrix[i][j] != 0):
+                phantom[i][j] = initial_energy * math.exp(-1 * (patient_matrix[i][j]) * 1)
             else:
                 phantom[i][j] = -1
     ph = plt.figure(1)
